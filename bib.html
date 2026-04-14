@@ -1,0 +1,1016 @@
+
+<!DOCTYPE html>
+<html lang="id" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Nell Code Storage Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    
+    <style>
+        body { font-family: 'Poppins', sans-serif; -webkit-tap-highlight-color: transparent; scroll-behavior: smooth; }
+        .ios-blur { backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px); }
+        .tab-active { color: #3b82f6; transform: translateY(-4px); }
+        .ios-card { transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); border-radius: 30px; }
+        .ios-card:hover { transform: translateY(-5px); box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1); }
+        
+        /* Tab system */
+        .tab-content { display: none; }
+        .tab-content.active { display: block; animation: slideUp 0.4s cubic-bezier(0.2,0.8,0.2,1); }
+        
+        @keyframes slideUp { 
+            from { opacity: 0; transform: translateY(18px); } 
+            to { opacity: 1; transform: translateY(0); } 
+        }
+        @keyframes popIn {
+            from { opacity: 0; transform: scale(0.92) translateY(10px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        @keyframes toastIn {
+            from { opacity: 0; transform: translateX(120%); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        @keyframes toastOut {
+            from { opacity: 1; transform: translateX(0); }
+            to { opacity: 0; transform: translateX(120%); }
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .glass { background: rgba(255, 255, 255, 0.7); border: 1px solid rgba(255, 255, 255, 0.3); }
+        .dark .glass { background: rgba(28, 28, 30, 0.8); border: 1px solid rgba(56, 56, 58, 0.5); }
+        .banner-gradient { background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%); }
+        .modal-animate { animation: popIn 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); }
+
+        /* ZIP drop zone */
+        .zip-drop-active { border-color: #3b82f6 !important; background: rgba(59,130,246,0.06) !important; transform: scale(1.01); }
+        .zip-drop-zone { transition: all 0.25s ease; }
+
+        /* Folder tree */
+        .folder-item { transition: all 0.2s ease; }
+        .folder-children { overflow: hidden; transition: max-height 0.3s cubic-bezier(0.4,0,0.2,1); max-height: 0; }
+        .folder-children.open { max-height: 9999px; }
+        .folder-arrow { transition: transform 0.25s ease; }
+        .folder-arrow.open { transform: rotate(90deg); }
+
+        /* Tags */
+        .auto-tag { animation: popIn 0.3s cubic-bezier(0.2,0.8,0.2,1); }
+        .tag-react { background: #e0f2fe; color: #0284c7; }
+        .tag-vue { background: #dcfce7; color: #16a34a; }
+        .tag-vite { background: #fef3c7; color: #d97706; }
+        .tag-next { background: #f1f5f9; color: #334155; }
+        .tag-tailwind { background: #e0f2fe; color: #0369a1; }
+        .tag-html { background: #fff7ed; color: #ea580c; }
+        .tag-ts { background: #eff6ff; color: #2563eb; }
+
+        /* Progress bar */
+        .progress-bar { transition: width 0.3s ease; }
+        .spinner { animation: spin 0.8s linear infinite; }
+
+        /* Toast */
+        .toast { animation: toastIn 0.35s cubic-bezier(0.2,0.8,0.2,1); }
+        .toast.out { animation: toastOut 0.3s ease forwards; }
+
+        /* Scrollbar */
+        .custom-scroll::-webkit-scrollbar { width: 4px; }
+        .custom-scroll::-webkit-scrollbar-track { background: transparent; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: rgba(156,163,175,0.4); border-radius: 4px; }
+    </style>
+</head>
+<body class="bg-[#f2f2f7] dark:bg-black min-h-screen text-gray-900 dark:text-gray-100 transition-colors duration-300 pb-24">
+
+    <!-- HEADER -->
+    <header class="sticky top-0 z-40 ios-blur bg-white/70 dark:bg-black/70 p-4 border-b dark:border-gray-800 flex justify-between items-center">
+        <div class="px-2 flex items-center gap-2">
+            <div class="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center text-white font-bold italic">N</div>
+            <div>
+                <h1 id="pageTitle" class="text-lg font-bold leading-tight">Beranda</h1>
+                <p id="snippetCount" class="text-[10px] text-blue-500 font-bold uppercase tracking-widest">Memuat...</p>
+            </div>
+        </div>
+        <button onclick="toggleDarkMode()" class="p-3 rounded-2xl bg-white dark:bg-gray-800 shadow-sm transition-all active:scale-90">
+            <i data-lucide="sun" class="w-5 h-5 hidden dark:block text-yellow-400"></i>
+            <i data-lucide="moon" class="w-5 h-5 dark:hidden text-indigo-600"></i>
+        </button>
+    </header>
+
+    <!-- TAB: HOME -->
+    <div id="tab-home" class="tab-content active p-4 md:p-6 max-w-5xl mx-auto">
+        <div class="banner-gradient rounded-[32px] p-6 mb-8 text-white shadow-xl shadow-blue-500/20 flex flex-col md:flex-row justify-between items-center gap-4 relative overflow-hidden">
+            <div class="relative z-10">
+                <h2 class="text-2xl font-bold">Halo, Nell! 👋</h2>
+                <p class="text-white/80 text-sm mt-1">Simpan dan kelola library code-mu dengan rapi.</p>
+                <button onclick="switchTab('add', 'Tambah')" class="mt-4 bg-white text-blue-600 px-6 py-2 rounded-full text-xs font-bold shadow-lg">Mulai Simpan</button>
+            </div>
+            <i data-lucide="code" class="w-32 h-32 absolute -right-4 -bottom-4 text-white/10 rotate-12"></i>
+        </div>
+        <div class="mb-8 space-y-4">
+            <div class="relative">
+                <i data-lucide="search" class="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400"></i>
+                <input type="text" id="searchInput" oninput="filterCards()" placeholder="Cari code atau tag..." class="w-full p-5 pl-14 rounded-3xl bg-white dark:bg-gray-900 border-none shadow-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all">
+            </div>
+        </div>
+        <div id="codeGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div class="p-10 text-center col-span-full text-gray-400">Memuat database...</div>
+        </div>
+    </div>
+
+    <!-- TAB: ADD SNIPPET -->
+    <div id="tab-add" class="tab-content p-4 md:p-6 max-w-3xl mx-auto">
+        <div class="glass p-6 rounded-[35px] space-y-4 shadow-2xl relative">
+            <h2 id="formTitle" class="text-xl font-bold text-blue-500 px-2">Tambah Code</h2>
+            <div id="dropZone" class="border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-[30px] p-8 flex flex-col items-center justify-center gap-3 hover:border-blue-500 transition-all cursor-pointer bg-white/40 dark:bg-gray-800/20" onclick="document.getElementById('fileInput').click()">
+                <i data-lucide="upload-cloud" class="w-10 h-10 text-blue-500"></i>
+                <p class="text-sm font-medium">Upload File HTML/JS/CSS</p>
+                <input type="file" id="fileInput" class="hidden" accept=".html,.css,.js,.txt">
+            </div>
+            <div class="space-y-4">
+                <input type="hidden" id="editId">
+                <input type="text" id="codeTitle" placeholder="Nama Project" class="w-full p-4 rounded-2xl bg-gray-100 dark:bg-gray-800 border-none outline-none focus:ring-2 focus:ring-blue-500">
+                <div class="grid grid-cols-2 gap-3">
+                    <select id="codeLang" class="p-4 rounded-2xl bg-gray-100 dark:bg-gray-800 border-none outline-none">
+                        <option value="html">HTML</option>
+                        <option value="js">JavaScript</option>
+                        <option value="css">CSS</option>
+                        <option value="other">Lainnya</option>
+                    </select>
+                    <input type="text" id="codeTags" placeholder="Tags (koma)" class="p-4 rounded-2xl bg-gray-100 dark:bg-gray-800 border-none outline-none">
+                </div>
+                <div class="group relative">
+                    <textarea id="codeContent" placeholder="Paste kode di sini..." class="w-full h-80 p-5 font-mono text-xs rounded-3xl bg-gray-950 text-green-400 border-none outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+                </div>
+                <textarea id="codeCDN" placeholder="External CDN (Opsional)..." class="w-full h-20 p-4 rounded-2xl bg-gray-100 dark:bg-gray-800 border-none outline-none text-xs"></textarea>
+                <div class="flex gap-2">
+                    <button onclick="saveSnippet()" id="btnSave" class="flex-grow bg-blue-500 hover:bg-blue-600 text-white py-4 rounded-2xl font-bold shadow-lg shadow-blue-500/30 transition-all active:scale-95">Simpan Snippet</button>
+                    <button id="btnCancelEdit" onclick="cancelEdit()" class="hidden bg-gray-200 dark:bg-gray-800 px-6 py-4 rounded-2xl font-bold text-sm">Batal</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB: ZIP VIEWER -->
+    <div id="tab-zip" class="tab-content p-4 md:p-6 max-w-3xl mx-auto">
+        <div class="glass p-6 rounded-[35px] space-y-5 shadow-2xl">
+            <div class="flex items-center gap-3 px-1">
+                <div class="w-9 h-9 bg-purple-500/10 rounded-xl flex items-center justify-center">
+                    <i data-lucide="archive" class="w-5 h-5 text-purple-500"></i>
+                </div>
+                <div>
+                    <h2 class="text-lg font-bold">ZIP Project Viewer</h2>
+                    <p class="text-[10px] text-gray-400 uppercase tracking-widest">Upload & Explore</p>
+                </div>
+            </div>
+
+            <!-- Drop Zone -->
+            <div id="zipDropZone" class="zip-drop-zone border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-[28px] p-10 flex flex-col items-center justify-center gap-4 cursor-pointer hover:border-purple-500 bg-white/40 dark:bg-gray-800/20" onclick="document.getElementById('zipFileInput').click()">
+                <div class="relative">
+                    <div class="w-16 h-16 bg-purple-500/10 rounded-2xl flex items-center justify-center">
+                        <i data-lucide="archive" class="w-8 h-8 text-purple-500"></i>
+                    </div>
+                </div>
+                <div class="text-center">
+                    <p class="font-semibold text-sm">Drag & drop file ZIP</p>
+                    <p class="text-xs text-gray-400 mt-1">Maksimum ~750KB untuk Firestore</p>
+                </div>
+                <input type="file" id="zipFileInput" class="hidden" accept=".zip">
+            </div>
+
+            <!-- Progress -->
+            <div id="zipProgress" class="hidden space-y-2">
+                <div class="flex items-center justify-between text-xs text-gray-500 px-1">
+                    <span id="zipProgressLabel" class="flex items-center gap-2">
+                        <svg class="spinner w-4 h-4 text-purple-500" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" stroke-dasharray="40 20" stroke-linecap="round"/></svg>
+                        Mengekstrak...
+                    </span>
+                    <span id="zipProgressPercent">0%</span>
+                </div>
+                <div class="h-2 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
+                    <div id="zipProgressBar" class="progress-bar h-full rounded-full bg-gradient-to-r from-purple-500 to-blue-500" style="width:0%"></div>
+                </div>
+            </div>
+
+            <!-- ZIP Result -->
+            <div id="zipResult" class="hidden space-y-4">
+                <div class="flex items-center justify-between flex-wrap gap-3 p-4 bg-white dark:bg-gray-900 rounded-2xl">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 bg-purple-500/10 rounded-xl flex items-center justify-center">
+                            <i data-lucide="package" class="w-5 h-5 text-purple-500"></i>
+                        </div>
+                        <div>
+                            <p id="zipFileName" class="font-bold text-sm truncate max-w-[180px]">project.zip</p>
+                            <p id="zipFileStats" class="text-[10px] text-gray-400">0 files</p>
+                        </div>
+                    </div>
+                    <button onclick="downloadZip()" class="flex items-center gap-2 px-4 py-2.5 bg-purple-500 hover:bg-purple-600 text-white text-xs font-bold rounded-xl transition-all active:scale-95 shadow-lg shadow-purple-500/20">
+                        <i data-lucide="download" class="w-4 h-4"></i>
+                        Download ZIP
+                    </button>
+                </div>
+
+                <button id="zipSaveBtn" onclick="saveProjectFromZip()" class="w-full flex items-center justify-center gap-2 px-4 py-3 bg-green-500 hover:bg-green-600 text-white text-xs font-bold rounded-xl transition-all active:scale-95 shadow-lg shadow-green-500/20">
+                    <i data-lucide="cloud-upload" class="w-4 h-4"></i>
+                    Simpan Project ke Database
+                </button>
+
+                <div id="autoTagContainer" class="hidden">
+                    <p class="text-[10px] uppercase tracking-widest text-gray-400 px-1 mb-2 font-bold">Detected Technologies</p>
+                    <div id="autoTagList" class="flex flex-wrap gap-2"></div>
+                </div>
+
+                <div>
+                    <p class="text-[10px] uppercase tracking-widest text-gray-400 px-1 mb-3 font-bold">Struktur File</p>
+                    <div id="folderTree" class="bg-white dark:bg-gray-900 rounded-2xl p-4 max-h-96 overflow-y-auto custom-scroll font-mono text-xs space-y-0.5"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB: PROJECTS -->
+    <div id="tab-projects" class="tab-content p-4 md:p-6 max-w-5xl mx-auto">
+        <div class="flex items-center justify-between mb-6 px-1">
+            <div>
+                <h2 class="text-xl font-bold">Saved Projects</h2>
+                <p id="projectCount" class="text-[10px] text-purple-500 font-bold uppercase tracking-widest">Memuat...</p>
+            </div>
+        </div>
+        <div id="projectSearchWrap" class="mb-6">
+            <div class="relative">
+                <i data-lucide="search" class="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400"></i>
+                <input type="text" id="projectSearchInput" oninput="filterProjects()" placeholder="Cari project atau tag..." class="w-full p-5 pl-14 rounded-3xl bg-white dark:bg-gray-900 border-none shadow-sm outline-none focus:ring-2 focus:ring-purple-500 transition-all">
+            </div>
+        </div>
+        
+        <!-- Skeleton loader -->
+        <div id="projectSkeleton" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div class="ios-card bg-white dark:bg-gray-900 p-6 shadow-sm border border-white dark:border-gray-800 animate-pulse">
+                <div class="h-4 bg-gray-200 dark:bg-gray-700 rounded-full w-2/3 mb-4"></div>
+                <div class="flex gap-2 mb-3"><div class="h-5 w-14 bg-gray-200 dark:bg-gray-700 rounded-full"></div><div class="h-5 w-16 bg-gray-200 dark:bg-gray-700 rounded-full"></div></div>
+                <div class="h-3 bg-gray-200 dark:bg-gray-700 rounded-full w-1/2 mb-6"></div>
+                <div class="h-10 bg-gray-200 dark:bg-gray-700 rounded-2xl"></div>
+            </div>
+        </div>
+        
+        <!-- Container Project -->
+        <div id="projectList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 hidden"></div>
+    </div>
+
+    <!-- PROJECT REVIEW MODAL -->
+    <div id="reviewModal" class="fixed inset-0 z-[70] hidden bg-[#f2f2f7] dark:bg-black overflow-y-auto">
+        <div class="sticky top-0 z-10 ios-blur bg-white/70 dark:bg-black/70 p-4 border-b dark:border-gray-800 flex justify-between items-center">
+            <button onclick="closeReview()" class="text-purple-500 font-bold px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-all flex items-center gap-2">
+                <i data-lucide="arrow-left" class="w-4 h-4"></i> Kembali
+            </button>
+            <h3 id="reviewTitle" class="text-sm font-bold opacity-50 uppercase tracking-widest truncate max-w-[40%]">Project</h3>
+            <button id="btnDeleteProject" class="text-red-500 font-bold px-4 py-2 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-full transition-all text-sm">Hapus</button>
+        </div>
+        <div class="max-w-3xl mx-auto p-4 md:p-6 space-y-5">
+            <div class="glass p-6 rounded-[35px] shadow-2xl space-y-4">
+                <div class="flex items-center gap-3">
+                    <div class="w-12 h-12 bg-purple-500/10 rounded-2xl flex items-center justify-center">
+                        <i data-lucide="package" class="w-6 h-6 text-purple-500"></i>
+                    </div>
+                    <div>
+                        <p id="reviewProjectName" class="font-bold text-lg">Project</p>
+                        <p id="reviewProjectDate" class="text-xs text-gray-400">-</p>
+                    </div>
+                </div>
+                <div id="reviewTagContainer">
+                    <p class="text-[10px] uppercase tracking-widest text-gray-400 mb-2 font-bold">Technologies</p>
+                    <div id="reviewTagList" class="flex flex-wrap gap-2"></div>
+                </div>
+                <div id="reviewStats" class="flex gap-3">
+                    <div class="px-4 py-2.5 bg-gray-50 dark:bg-gray-800 rounded-xl text-center flex-1">
+                        <p id="reviewFileCount" class="text-lg font-bold text-purple-500">0</p>
+                        <p class="text-[9px] text-gray-400 uppercase tracking-widest">Files</p>
+                    </div>
+                    <div class="px-4 py-2.5 bg-gray-50 dark:bg-gray-800 rounded-xl text-center flex-1">
+                        <p id="reviewFolderCount" class="text-lg font-bold text-blue-500">0</p>
+                        <p class="text-[9px] text-gray-400 uppercase tracking-widest">Folders</p>
+                    </div>
+                </div>
+            </div>
+            <div class="glass p-6 rounded-[35px] shadow-2xl">
+                <p class="text-[10px] uppercase tracking-widest text-gray-400 px-1 mb-3 font-bold">Struktur File</p>
+                <div id="reviewFolderTree" class="bg-white dark:bg-gray-900 rounded-2xl p-4 max-h-[60vh] overflow-y-auto custom-scroll font-mono text-xs space-y-0.5"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB: ADMIN -->
+    <div id="tab-admin" class="tab-content p-4 md:p-6 max-w-lg mx-auto">
+        <div class="bg-white dark:bg-gray-900 rounded-[40px] p-8 shadow-sm text-center">
+            <div class="w-24 h-24 bg-blue-50 dark:bg-blue-900/20 text-blue-500 rounded-full flex items-center justify-center mx-auto mb-6">
+                <i data-lucide="layout-dashboard" class="w-10 h-10"></i>
+            </div>
+            <h2 class="text-2xl font-bold mb-2">Nell OS Admin</h2>
+            <div class="grid grid-cols-2 gap-3 mb-6">
+                <div class="p-4 bg-gray-50 dark:bg-gray-800 rounded-3xl text-center">
+                    <p id="statTotal" class="text-xl font-bold">0</p>
+                    <p class="text-[10px] text-gray-400 uppercase">Total Snippets</p>
+                </div>
+                <div class="p-4 bg-gray-50 dark:bg-gray-800 rounded-3xl text-center">
+                    <p class="text-xl font-bold text-green-500">Online</p>
+                    <p class="text-[10px] text-gray-400 uppercase">Firebase Status</p>
+                </div>
+            </div>
+            <button onclick="location.reload()" class="w-full p-4 bg-red-50 dark:bg-red-900/10 text-red-500 rounded-2xl flex items-center justify-between font-bold text-sm">
+                <span>Restart App</span>
+                <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- BOTTOM NAV -->
+    <nav class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 glass rounded-full px-4 py-2 shadow-2xl flex items-center gap-4 md:gap-6 border-none">
+        <button onclick="switchTab('home', 'Beranda')" id="nav-home" class="flex flex-col items-center gap-1 tab-active transition-all px-1.5 md:px-2">
+            <i data-lucide="home" class="w-5 h-5 md:w-6 md:h-6"></i>
+            <span class="text-[9px] font-bold">Home</span>
+        </button>
+        <button onclick="switchTab('add', 'Tambah')" id="nav-add" class="flex flex-col items-center gap-1 text-gray-400 transition-all px-1.5 md:px-2">
+            <i data-lucide="plus-circle" class="w-5 h-5 md:w-6 md:h-6"></i>
+            <span class="text-[9px] font-bold">Simpan</span>
+        </button>
+        <button onclick="switchTab('zip', 'ZIP Viewer')" id="nav-zip" class="flex flex-col items-center gap-1 text-gray-400 transition-all px-1.5 md:px-2">
+            <i data-lucide="archive" class="w-5 h-5 md:w-6 md:h-6"></i>
+            <span class="text-[9px] font-bold">ZIP</span>
+        </button>
+        <button onclick="switchTab('projects', 'Projects')" id="nav-projects" class="flex flex-col items-center gap-1 text-gray-400 transition-all px-1.5 md:px-2">
+            <i data-lucide="folder-kanban" class="w-5 h-5 md:w-6 md:h-6"></i>
+            <span class="text-[9px] font-bold">Projects</span>
+        </button>
+        <button onclick="switchTab('admin', 'Admin')" id="nav-admin" class="flex flex-col items-center gap-1 text-gray-400 transition-all px-1.5 md:px-2">
+            <i data-lucide="command" class="w-5 h-5 md:w-6 md:h-6"></i>
+            <span class="text-[9px] font-bold">Menu</span>
+        </button>
+    </nav>
+
+    <!-- CUSTOM ALERT MODAL -->
+    <div id="customAlert" class="fixed inset-0 z-[100] hidden flex items-center justify-center p-6">
+        <div class="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
+        <div class="glass dark:bg-gray-900/95 w-full max-w-xs rounded-[28px] overflow-hidden shadow-2xl relative modal-animate">
+            <div class="p-6 text-center">
+                <h3 id="alertTitle" class="text-lg font-semibold mb-2">Akses Admin</h3>
+                <p id="alertMessage" class="text-sm opacity-70 mb-4">Masukkan password untuk melanjutkan.</p>
+                <input type="password" id="alertInput" class="w-full p-3 text-center rounded-xl bg-gray-100 dark:bg-gray-800 border-none outline-none focus:ring-2 focus:ring-blue-500 mb-2" placeholder="••••••">
+            </div>
+            <div class="flex border-t dark:border-gray-800">
+                <button onclick="closeAlert()" class="flex-1 p-4 text-sm font-medium border-r dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-white/5 transition-all">Batal</button>
+                <button id="alertConfirmBtn" class="flex-1 p-4 text-sm font-bold text-blue-500 hover:bg-gray-50 dark:hover:bg-white/5 transition-all">Oke</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- PREVIEW MODAL -->
+    <div id="previewModal" class="fixed inset-0 z-[60] hidden bg-white dark:bg-black flex flex-col">
+        <div class="p-4 border-b dark:border-gray-800 flex justify-between items-center bg-white/90 dark:bg-black/90">
+            <button onclick="closePreview()" class="text-blue-500 font-bold px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-all">Selesai</button>
+            <h3 class="text-sm font-bold opacity-50 uppercase tracking-widest">Live Preview</h3>
+            <div class="w-16"></div>
+        </div>
+        <iframe id="previewFrame" class="w-full flex-grow bg-white"></iframe>
+    </div>
+
+    <!-- TOAST CONTAINER -->
+    <div id="toastContainer" class="fixed top-5 right-4 z-[200] flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- FIREBASE INTEGRATION SCRIPT (NO AUTHENTICATION) -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+        import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, updateDoc, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+        // ==========================================
+        // 1. FIREBASE CONFIGURATION (NO AUTH)
+        // ==========================================
+        const firebaseConfig = {
+            apiKey: "AIzaSyD2DDZnBU78RAwQgXS3ar_T-hjj0r_L65c",
+            authDomain: "akun-mlbb.firebaseapp.com",
+            projectId: "akun-mlbb",
+            storageBucket: "akun-mlbb.firebasestorage.app",
+            messagingSenderId: "985001524254",
+            appId: "1:985001524254:web:140fa9f44daac050de020f"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        
+        console.log("DB Loaded:", db);
+
+        // Variables
+        let allData = [];      // Snippets List
+        let allProjects = [];  // Projects List
+        
+        const ADMIN_PASSWORD = "123admin";
+        let pendingDeleteId = null;
+        let pendingDeleteType = null;
+        let currentZipMetadata = null;
+
+        // Utility Function to Convert File to Base64
+        function fileToBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+
+        // ==========================================
+        // 2. LOAD DATA (Snippets & Projects)
+        // ==========================================
+        async function loadProjects() {
+            try {
+                const querySnapshot = await getDocs(collection(db, "projects"));
+                const projects = [];
+                
+                querySnapshot.forEach(doc => {
+                    projects.push({ id: doc.id, ...doc.data() });
+                });
+                
+                // Sort by Date Descending
+                projects.sort((a, b) => b.createdAt - a.createdAt);
+
+                console.log("Loaded Projects:", projects);
+                allProjects = projects; // Update global array for search function
+                
+                document.getElementById('projectCount').innerText = `${projects.length} Projects`;
+                document.getElementById('projectSkeleton').classList.add('hidden');
+                document.getElementById('projectList').classList.remove('hidden');
+                
+                renderProjects(projects);
+            } catch (err) {
+                console.error("Load Projects error:", err);
+                showToast("Gagal mengambil data Project", "error");
+            }
+        }
+
+        function loadSnippets() {
+            // Using onSnapshot for Snippets so it live updates
+            const q = query(collection(db, "codes"), orderBy("createdAt", "desc"));
+            onSnapshot(q, (snap) => {
+                allData = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                document.getElementById('snippetCount').innerText = `${allData.length} Snippets`;
+                document.getElementById('statTotal').innerText = allData.length;
+                renderSnippets();
+            }, (err) => {
+                console.error("Load Snippets error:", err);
+            });
+        }
+
+        // Initialize Call
+        loadProjects();
+        loadSnippets();
+
+        // ==========================================
+        // 3. RENDER UI & REVIEW
+        // ==========================================
+        window.renderProjects = (projectsToRender = allProjects) => {
+            const container = document.getElementById("projectList");
+            container.innerHTML = "";
+
+            if (projectsToRender.length === 0) {
+                container.innerHTML = `<div class="p-10 text-center col-span-full text-gray-400">Project tidak ditemukan.</div>`;
+                return;
+            }
+
+            projectsToRender.forEach(p => {
+                const tagHtml = (p.tags || []).map(t => `<span class="text-[9px] text-gray-500 font-medium bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-full">${t}</span>`).join('');
+                const date = new Date(p.createdAt).toLocaleDateString('id-ID', {day:'numeric', month:'short', year:'numeric'});
+
+                const el = document.createElement("div");
+                el.className = "ios-card project-card bg-white dark:bg-gray-900 p-6 flex flex-col shadow-sm border border-white dark:border-gray-800 cursor-pointer";
+                
+                // Tambahkan UI Review dan Download Buttons Sesuai Permintaan
+                el.innerHTML = `
+                    <div class="flex items-start gap-3 mb-4">
+                        <div class="w-10 h-10 bg-purple-500/10 rounded-xl flex items-center justify-center flex-shrink-0">
+                            <i data-lucide="package" class="w-5 h-5 text-purple-500"></i>
+                        </div>
+                        <div class="flex-grow min-w-0">
+                            <h3 class="font-bold text-gray-900 dark:text-white truncate">${p.name || "No Name"}</h3>
+                            <p class="text-[10px] text-gray-400">${date} • ${p.fileCount || 0} files</p>
+                        </div>
+                    </div>
+                    <div class="tags flex flex-wrap gap-1 mb-5">${tagHtml}</div>
+                    
+                    <div class="flex gap-2 mt-auto pt-2 border-t dark:border-gray-800">
+                        <button onclick="event.stopPropagation(); openProject('${p.id}')" class="flex-1 bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 py-2 rounded-xl text-xs font-bold hover:bg-purple-100 dark:hover:bg-purple-900/40 transition-colors flex justify-center items-center gap-1">
+                            <i data-lucide="eye" class="w-3.5 h-3.5"></i> Review
+                        </button>
+                        <button onclick="event.stopPropagation(); downloadProjectZip('${p.id}')" class="flex-1 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 py-2 rounded-xl text-xs font-bold hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors flex justify-center items-center gap-1">
+                            <i data-lucide="download" class="w-3.5 h-3.5"></i> Download
+                        </button>
+                    </div>
+                `;
+                container.appendChild(el);
+            });
+            lucide.createIcons();
+        };
+
+        window.openProject = (projectId) => {
+            const project = allProjects.find(p => p.id === projectId);
+            if(!project) return;
+            
+            console.log("Buka project:", project);
+
+            document.getElementById('reviewProjectName').innerText = project.name;
+            document.getElementById('reviewProjectDate').innerText = new Date(project.createdAt).toLocaleDateString('id-ID');
+            document.getElementById('reviewFileCount').innerText = project.fileCount;
+            
+            // Hitung estimasi folder
+            const dirs = new Set();
+            (project.fileNames || []).forEach(path => {
+                const parts = path.split('/');
+                parts.pop();
+                let cp = '';
+                parts.forEach(p => { cp += p + '/'; dirs.add(cp); });
+            });
+            document.getElementById('reviewFolderCount').innerText = dirs.size;
+
+            // Render Tags
+            const tagList = document.getElementById('reviewTagList');
+            tagList.innerHTML = (project.tags || []).map(t => `<span class="px-3 py-1.5 rounded-full text-xs font-bold bg-purple-500/10 text-purple-500">${t}</span>`).join('');
+
+            // Rebuild Tree dari fileNames array
+            const tree = {};
+            (project.fileNames || []).forEach(path => {
+                const parts = path.split('/');
+                let node = tree;
+                parts.forEach((part, i) => {
+                    if (!node[part]) node[part] = {};
+                    if (i < parts.length - 1) {
+                        if (!node[part].__children) node[part].__children = {};
+                        node = node[part].__children;
+                    } else {
+                        node[part].__isFile = true;
+                    }
+                });
+            });
+            
+            document.getElementById('reviewFolderTree').innerHTML = renderTree(tree, 0);
+            document.getElementById('reviewModal').classList.remove('hidden');
+            
+            // Action Delete via Modal Admin
+            document.getElementById('btnDeleteProject').onclick = () => showDeleteModal(project.id, 'project');
+            lucide.createIcons();
+        };
+
+        window.closeReview = () => document.getElementById('reviewModal').classList.add('hidden');
+
+        window.filterProjects = () => {
+            const q = (document.getElementById('projectSearchInput').value || '').toLowerCase();
+            const filtered = allProjects.filter(p => p.name.toLowerCase().includes(q) || (p.tags && p.tags.join(',').toLowerCase().includes(q)));
+            renderProjects(filtered);
+        };
+
+        // ==========================================
+        // 4. SAVE PROJECT (ZIP)
+        // ==========================================
+        window.saveProjectFromZip = async () => {
+            if (!currentZipMetadata || !currentZipMetadata.zipBase64) { 
+                showToast('Tidak ada data project atau gagal convert file!', 'warning'); 
+                return; 
+            }
+
+            const btn = document.getElementById('zipSaveBtn');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 spinner inline-block mr-2"></i>Menyimpan...';
+            btn.disabled = true;
+
+            try {
+                console.log("Saving project...", currentZipMetadata.name);
+
+                await addDoc(collection(db, "projects"), {
+                    ...currentZipMetadata,
+                    createdAt: Date.now()
+                });
+
+                console.log("Berhasil simpan project");
+                showToast('Project sukses tersimpan!', 'success');
+                
+                // Pindah tab dan Render Ulang Data
+                switchTab('projects', 'Projects');
+                await loadProjects(); 
+                
+                // Clear metadata
+                currentZipMetadata = null;
+                document.getElementById('zipResult').classList.add('hidden');
+                document.getElementById('zipDropZone').classList.remove('hidden');
+                document.getElementById('zipFileInput').value = ""; // reset file input
+
+            } catch (err) {
+                console.error("Error save project:", err);
+                showToast("Gagal simpan data ke Database. Coba cek koneksi atau ukuran file.", 'error');
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+                lucide.createIcons();
+            }
+        };
+
+        // ==========================================
+        // 5. SNIPPET SAVE & MANAGEMENT
+        // ==========================================
+        window.saveSnippet = async () => {
+            const id = document.getElementById('editId').value;
+            const title = document.getElementById('codeTitle').value;
+            const content = document.getElementById('codeContent').value;
+            if (!title || !content) { showToast('Judul & kode wajib diisi!', 'warning'); return; }
+
+            const data = {
+                title, content,
+                language: document.getElementById('codeLang').value,
+                tags: document.getElementById('codeTags').value.split(',').map(t => t.trim()).filter(Boolean),
+                cdn: document.getElementById('codeCDN').value,
+                updatedAt: Date.now()
+            };
+
+            try {
+                if (id) {
+                    await updateDoc(doc(db, "codes", id), data);
+                    showToast('Snippet diperbarui!', 'success');
+                } else {
+                    data.createdAt = Date.now();
+                    await addDoc(collection(db, "codes"), data);
+                    showToast('Snippet disimpan!', 'success');
+                }
+                window.cancelEdit();
+                switchTab('home', 'Beranda');
+            } catch(err) {
+                console.error("Save Snippet Error", err); 
+                showToast(err.message, 'error'); 
+            }
+        };
+
+        const renderSnippets = () => {
+            const grid = document.getElementById('codeGrid');
+            grid.innerHTML = '';
+            if (allData.length === 0) {
+                grid.innerHTML = `<div class="p-10 text-center col-span-full text-gray-400">Belum ada snippet. Yuk tambah! 🚀</div>`;
+                return;
+            }
+            allData.forEach(item => {
+                const tagHtml = (item.tags || []).filter(Boolean).map(t => `<span class="text-[9px] text-gray-400 font-medium">#${t}</span>`).join('');
+                grid.innerHTML += `
+                    <div class="ios-card search-item bg-white dark:bg-gray-900 p-6 flex flex-col shadow-sm border border-white dark:border-gray-800">
+                        <div class="flex justify-between items-start mb-4">
+                            <span class="text-[10px] font-black px-3 py-1 bg-blue-500/10 text-blue-500 rounded-full uppercase tracking-tighter">${item.language}</span>
+                            <div class="flex gap-1">
+                                <button onclick="startEdit('${item.id}')" class="p-2 hover:bg-blue-50 dark:hover:bg-blue-900/20 text-blue-400 rounded-full"><i data-lucide="edit-3" class="w-4 h-4"></i></button>
+                                <button onclick="showDeleteModal('${item.id}', 'code')" class="p-2 hover:bg-red-50 dark:hover:bg-red-900/10 text-red-400 rounded-full"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                            </div>
+                        </div>
+                        <h3 class="font-bold text-gray-900 dark:text-white mb-1 leading-tight searchable-text">${item.title}</h3>
+                        <div class="flex flex-wrap gap-1 mb-6 searchable-text">${tagHtml}</div>
+                        <div class="mt-auto grid grid-cols-5 gap-2">
+                            <button onclick="viewPreview('${btoa(unescape(encodeURIComponent(item.content)))}', '${item.cdn || ''}')" class="col-span-4 py-3 bg-blue-500 text-white rounded-2xl text-[11px] font-bold active:scale-95 transition-all shadow-lg shadow-blue-500/20">VIEW PREVIEW</button>
+                            <button onclick="copySnippet('${btoa(unescape(encodeURIComponent(item.content)))}')" class="py-3 bg-gray-100 dark:bg-gray-800 rounded-2xl flex items-center justify-center active:scale-95 transition-all"><i data-lucide="copy" class="w-4 h-4"></i></button>
+                        </div>
+                    </div>`;
+            });
+            lucide.createIcons();
+        };
+
+        // ==========================================
+        // 6. DELETE LOGIC
+        // ==========================================
+        window.showDeleteModal = (id, type) => {
+            pendingDeleteId = id;
+            pendingDeleteType = type; // 'code' or 'project'
+            
+            const input = document.getElementById('alertInput');
+            input.classList.remove('hidden');
+            input.value = "";
+            document.getElementById('alertTitle').innerText = "Akses Admin";
+            document.getElementById('alertMessage').innerText = "Masukkan password untuk menghapus.";
+            document.getElementById('alertConfirmBtn').innerText = "Oke";
+            
+            document.getElementById('customAlert').classList.remove('hidden');
+        };
+
+        document.getElementById('alertConfirmBtn').onclick = async () => {
+            const input = document.getElementById('alertInput');
+            if (input.value === ADMIN_PASSWORD) {
+                try {
+                    const colName = pendingDeleteType === 'code' ? "codes" : "projects";
+                    await deleteDoc(doc(db, colName, pendingDeleteId));
+                    window.closeAlert();
+                    
+                    if (pendingDeleteType === 'project') {
+                        window.closeReview();
+                        await loadProjects(); // reload datanya
+                    }
+                    
+                    showToast(`${pendingDeleteType === 'code' ? 'Snippet' : 'Project'} berhasil dihapus.`, 'success');
+                } catch (err) { 
+                    showToast(err.message, 'error'); 
+                }
+            } else {
+                document.getElementById('alertTitle').innerText = "⚠️ Gagal";
+                document.getElementById('alertMessage').innerText = "Password salah!";
+                input.classList.add('hidden');
+            }
+        };
+
+        window.closeAlert = () => document.getElementById('customAlert').classList.add('hidden');
+
+        // ==========================================
+        // 7. UTILITIES & ZIP HANDLING
+        // ==========================================
+        window.switchTab = (tab, title) => {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('nav button').forEach(b => {
+                b.classList.remove('tab-active', 'text-blue-500');
+                b.classList.add('text-gray-400');
+            });
+            
+            const target = document.getElementById(`tab-${tab}`);
+            if (target) target.classList.add('active');
+            
+            const navBtn = document.getElementById(`nav-${tab}`);
+            if (navBtn) {
+                navBtn.classList.add('tab-active', 'text-blue-500');
+                navBtn.classList.remove('text-gray-400');
+            }
+            if (title) document.getElementById('pageTitle').innerText = title;
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        };
+
+        window.toggleDarkMode = () => document.documentElement.classList.toggle('dark');
+
+        window.showToast = (msg, type = 'info') => {
+            const colors = { success: 'bg-green-500', error: 'bg-red-500', info: 'bg-blue-500', warning: 'bg-yellow-500' };
+            const icons = { success: 'check-circle', error: 'x-circle', info: 'info', warning: 'alert-triangle' };
+            const t = document.createElement('div');
+            t.className = `toast pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-2xl shadow-xl text-white text-sm font-medium ${colors[type]}`;
+            t.innerHTML = `<i data-lucide="${icons[type]}" class="w-4 h-4 flex-shrink-0"></i><span>${msg}</span>`;
+            document.getElementById('toastContainer').appendChild(t);
+            lucide.createIcons({ nodes: [t] });
+            setTimeout(() => {
+                t.classList.add('out');
+                setTimeout(() => t.remove(), 350);
+            }, 3200);
+        };
+
+        window.filterCards = () => {
+            const q = document.getElementById('searchInput').value.toLowerCase();
+            document.querySelectorAll('#codeGrid .search-item').forEach(c => {
+                const text = c.querySelector('.searchable-text').innerText.toLowerCase();
+                c.style.display = text.includes(q) ? 'flex' : 'none';
+            });
+        };
+
+        window.startEdit = (id) => {
+            const item = allData.find(d => d.id === id);
+            if (!item) return;
+            document.getElementById('formTitle').innerText = "Edit Snippet";
+            document.getElementById('editId').value = id;
+            document.getElementById('codeTitle').value = item.title;
+            document.getElementById('codeContent').value = item.content;
+            document.getElementById('codeLang').value = item.language;
+            document.getElementById('codeTags').value = item.tags.join(', ');
+            document.getElementById('codeCDN').value = item.cdn || '';
+            document.getElementById('btnSave').innerText = "Simpan Perubahan";
+            document.getElementById('btnCancelEdit').classList.remove('hidden');
+            switchTab('add', 'Edit Code');
+        };
+
+        window.cancelEdit = () => {
+            document.getElementById('formTitle').innerText = "Tambah Code";
+            document.getElementById('editId').value = '';
+            document.getElementById('codeTitle').value = '';
+            document.getElementById('codeContent').value = '';
+            document.getElementById('codeCDN').value = '';
+            document.getElementById('codeTags').value = '';
+            document.getElementById('btnSave').innerText = "Simpan Snippet";
+            document.getElementById('btnCancelEdit').classList.add('hidden');
+        };
+
+        window.viewPreview = (base64, cdn) => {
+            const code = decodeURIComponent(escape(atob(base64)));
+            document.getElementById('previewModal').classList.remove('hidden');
+            const cdnTags = cdn ? cdn.split('\n').map(url => `<script src="${url.trim()}"><\/script>`).join('') : '';
+            document.getElementById('previewFrame').srcdoc = `<!DOCTYPE html><html><head><script src="https://cdn.tailwindcss.com"><\/script>${cdnTags}</head><body>${code}</body></html>`;
+        };
+
+        window.closePreview = () => document.getElementById('previewModal').classList.add('hidden');
+
+        window.copySnippet = (base64) => {
+            navigator.clipboard.writeText(decodeURIComponent(escape(atob(base64))));
+            showToast('Kode disalin!', 'success');
+        };
+
+        // ZIP Logic 
+        let currentZipFile = null;
+        const zipDropZone = document.getElementById('zipDropZone');
+        zipDropZone.addEventListener('dragover', (e) => { e.preventDefault(); zipDropZone.classList.add('zip-drop-active'); });
+        zipDropZone.addEventListener('dragleave', () => zipDropZone.classList.remove('zip-drop-active'));
+        zipDropZone.addEventListener('drop', (e) => { e.preventDefault(); zipDropZone.classList.remove('zip-drop-active'); handleZipFile(e.dataTransfer.files[0]); });
+        document.getElementById('zipFileInput').addEventListener('change', (e) => handleZipFile(e.target.files[0]));
+        
+        document.getElementById('fileInput').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                document.getElementById('codeContent').value = ev.target.result;
+                if (!document.getElementById('codeTitle').value) document.getElementById('codeTitle').value = file.name.replace(/\.[^.]+$/, '');
+            };
+            reader.readAsText(file);
+        });
+
+        async function handleZipFile(file) {
+            if (!file) return;
+            if (!file.name.endsWith('.zip')) { showToast('Hanya file .zip!', 'error'); return; }
+            
+            // Limitasi ketat Firestore (~1MB document size limit, base64 menambah sekitar 33% ukuran string)
+            // Limit aman untuk upload di set sekitar ~750KB
+            if (file.size > 750 * 1024) { 
+                showToast('File terlalu besar! Max ~750KB untuk disimpan ke Database.', 'error'); 
+                document.getElementById('zipFileInput').value = ""; // reset input
+                return; 
+            }
+
+            currentZipFile = file;
+            showZipProgress(true);
+            setZipProgress(20, 'Membaca file...');
+
+            try {
+                const jszip = window.JSZip || (await import('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js'));
+                const zip = new JSZip();
+                
+                const result = await zip.loadAsync(file);
+                setZipProgress(50, 'Menganalisis...');
+                
+                const fileNames = Object.keys(result.files).filter(n => !result.files[n].dir);
+                buildFolderTree(result.files, document.getElementById('folderTree'));
+                
+                const tags = await detectAutoTags(fileNames, result.files);
+                setZipProgress(80, 'Konversi ke Base64...');
+
+                // Convert to Base64 (IMPLEMENTASI WAJIB)
+                const zipBase64 = await fileToBase64(file);
+
+                setZipProgress(100, 'Selesai!');
+
+                currentZipMetadata = {
+                    name: file.name.replace('.zip', ''),
+                    size: file.size,
+                    fileCount: fileNames.length,
+                    fileNames: fileNames, 
+                    tags: tags || [],
+                    zipBase64: zipBase64 // SAVE BASE64 HERE
+                };
+
+                setTimeout(() => {
+                    showZipProgress(false);
+                    document.getElementById('zipDropZone').classList.add('hidden');
+                    document.getElementById('zipResult').classList.remove('hidden');
+                    document.getElementById('zipFileName').textContent = file.name;
+                    document.getElementById('zipFileStats').textContent = `${fileNames.length} files • ${(file.size/1024).toFixed(1)} KB`;
+                    lucide.createIcons();
+                }, 400);
+
+            } catch(err) {
+                showZipProgress(false);
+                showToast('Gagal membaca ZIP: ' + err.message, 'error');
+            }
+        }
+
+        function showZipProgress(show) {
+            document.getElementById('zipProgress')[show ? 'classList' : 'classList'][show ? 'remove' : 'add']('hidden');
+        }
+
+        function setZipProgress(pct, label) {
+            document.getElementById('zipProgressBar').style.width = pct + '%';
+            document.getElementById('zipProgressPercent').textContent = pct + '%';
+            if (label) document.getElementById('zipProgressLabel').innerHTML = `<svg class="spinner w-4 h-4 text-purple-500 mr-2 inline" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" stroke-dasharray="40 20" stroke-linecap="round"/></svg>${label}`;
+        }
+
+        function buildFolderTree(filesObj, container) {
+            const tree = {};
+            Object.keys(filesObj).forEach(path => {
+                const parts = path.split('/').filter(Boolean);
+                let node = tree;
+                parts.forEach((part, i) => {
+                    if (!node[part]) node[part] = {};
+                    if (i < parts.length - 1) {
+                        if (!node[part].__children) node[part].__children = {};
+                        node = node[part].__children;
+                    } else node[part].__isFile = !filesObj[path].dir;
+                });
+            });
+            container.innerHTML = renderTree(tree, 0);
+        }
+
+        function renderTree(node, depth) {
+            let html = '';
+            const entries = Object.entries(node).sort(([aK, aV], [bK, bV]) => {
+                const aIsDir = !aV.__isFile, bIsDir = !bV.__isFile;
+                if (aIsDir && !bIsDir) return -1;
+                if (!aIsDir && bIsDir) return 1;
+                return aK.localeCompare(bK);
+            });
+
+            entries.forEach(([name, val]) => {
+                if (name.startsWith('__')) return;
+                const indent = depth * 16;
+                const uid = 'tree_' + Math.random().toString(36).slice(2);
+
+                if (val.__isFile) {
+                    const ext = name.split('.').pop().toLowerCase();
+                    const icon = {html:'code',css:'paintbrush',js:'zap',jsx:'atom',ts:'file-code',json:'braces',md:'file-text',png:'image',zip:'archive'}[ext] || 'file';
+                    html += `<div class="flex items-center gap-2 py-1 px-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800" style="padding-left:${indent + 8}px"><i data-lucide="${icon}" class="w-3.5 h-3.5 text-gray-400"></i><span class="text-gray-600 dark:text-gray-300 truncate">${name}</span></div>`;
+                } else {
+                    html += `<div><div class="flex items-center gap-2 py-1 px-2 rounded-lg hover:bg-purple-50 dark:hover:bg-purple-900/10 cursor-pointer" style="padding-left:${indent + 8}px" onclick="toggleFolder('${uid}', this)"><i data-lucide="chevron-right" class="folder-arrow w-3.5 h-3.5 text-purple-400"></i><i data-lucide="folder" class="w-3.5 h-3.5 text-purple-400 folder-closed-icon"></i><i data-lucide="folder-open" class="w-3.5 h-3.5 text-purple-500 folder-open-icon hidden"></i><span class="font-semibold text-gray-800 dark:text-gray-200 truncate">${name}</span></div><div id="${uid}" class="folder-children">${renderTree(val.__children || val, depth + 1)}</div></div>`;
+                }
+            });
+            return html;
+        }
+
+        window.toggleFolder = (uid, el) => {
+            const ch = document.getElementById(uid), ar = el.querySelector('.folder-arrow'), fc = el.querySelector('.folder-closed-icon'), fo = el.querySelector('.folder-open-icon');
+            if (ch.classList.contains('open')) { ch.classList.remove('open'); ar.classList.remove('open'); fc.classList.remove('hidden'); fo.classList.add('hidden'); }
+            else { ch.classList.add('open'); ar.classList.add('open'); fc.classList.add('hidden'); fo.classList.remove('hidden'); }
+        };
+
+        const TAG_RULES = [
+            { label: 'React', cls: 'tag-react', match: (names, c) => names.some(n => n.endsWith('.jsx') || n.endsWith('.tsx')) || c.react },
+            { label: 'Vue', cls: 'tag-vue', match: (names) => names.some(n => n.endsWith('.vue')) },
+            { label: 'Next.js', cls: 'tag-next', match: (names, c) => names.some(n => n.includes('next.config')) || c.next },
+            { label: 'Vite', cls: 'tag-vite', match: (names, c) => names.some(n => n.includes('vite.config')) || c.vite },
+            { label: 'Tailwind', cls: 'tag-tailwind', match: (names) => names.some(n => n.includes('tailwind.config')) },
+            { label: 'TypeScript', cls: 'tag-ts', match: (names) => names.some(n => n.endsWith('.ts')) },
+            { label: 'HTML', cls: 'tag-html', match: (names) => names.some(n => n.endsWith('.html')) }
+        ];
+
+        async function detectAutoTags(fileNames, zipFiles) {
+            const basenames = fileNames.map(f => f.split('/').pop().toLowerCase());
+            let pkg = { react: false, vite: false, next: false };
+            const pkgEntry = Object.keys(zipFiles).find(k => k.endsWith('package.json') && !zipFiles[k].dir);
+            
+            if (pkgEntry) {
+                try {
+                    const txt = await zipFiles[pkgEntry].async('string');
+                    const j = JSON.parse(txt);
+                    const deps = { ...j.dependencies, ...j.devDependencies };
+                    pkg.react = 'react' in deps; pkg.vite = 'vite' in deps; pkg.next = 'next' in deps;
+                } catch(e){}
+            }
+            const matched = TAG_RULES.filter(r => r.match(basenames, pkg));
+            
+            const list = document.getElementById('autoTagList');
+            list.innerHTML = '';
+            document.getElementById('autoTagContainer').classList[matched.length ? 'remove' : 'add']('hidden');
+            
+            matched.forEach(t => {
+                const el = document.createElement('span');
+                el.className = `auto-tag px-3 py-1.5 rounded-full text-xs font-bold ${t.cls}`;
+                el.textContent = t.label;
+                list.appendChild(el);
+            });
+            return matched.map(m => m.label);
+        }
+
+        // DOWNLOAD LOGIC UNTUK PROJECT DARI DATABASE
+        window.downloadProjectZip = (projectId) => {
+            const project = allProjects.find(p => p.id === projectId);
+            if (!project || !project.zipBase64) {
+                showToast('File ZIP tidak ditemukan atau rusak.', 'error');
+                return;
+            }
+            
+            const a = document.createElement("a");
+            a.href = project.zipBase64;
+            a.download = `${project.name}.zip`;
+            document.body.appendChild(a); // Append necessary for firefox
+            a.click();
+            document.body.removeChild(a);
+            showToast('Download dimulai!', 'success');
+        };
+
+        // DOWNLOAD LOGIC SAAT DI TAB UPLOAD
+        window.downloadZip = () => {
+            if (currentZipMetadata && currentZipMetadata.zipBase64) {
+                const a = document.createElement('a');
+                a.href = currentZipMetadata.zipBase64;
+                a.download = `${currentZipMetadata.name}.zip`;
+                a.click();
+                showToast('Download dimulai!', 'success');
+            } else if (currentZipFile) {
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(currentZipFile);
+                a.download = currentZipFile.name;
+                a.click();
+                URL.revokeObjectURL(a.href);
+                showToast('Download dimulai!', 'success');
+            }
+        };
+
+        lucide.createIcons();
+    </script>
+</body>
+</html>
